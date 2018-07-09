@@ -1,270 +1,209 @@
 #include "mainwindow.h"
+#include "reader.h"
 #include "ui_mainwindow.h"
-#include <Objbase.h>
+
+#include <QAudioInput>
+#include <QBuffer>
+#include <QCloseEvent>
+#include <QDateTime>
+#include <QDebug>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QSettings>
+#include <QStandardPaths>
+#include <fstream>
+#include <lsl_cpp.h>
 #include <string>
 #include <vector>
-#include <boost/lexical_cast.hpp>
 
-
-// desired buffer duration in seconds
-const float buffer_duration = 1.0f; 
-// update interval in seconds
-const float update_interval = 0.05f;
-// retry interval after device failure
-const float retry_interval = 0.25;
-
-// time conversion factor
-const int REFTIMES_PER_SEC = 10000000;
-
-// convert wBitsPerSample in WAVEFORMATEX to lsl::channel_format_t
 lsl::channel_format_t bits2fmt(int bits) {
-	if (bits == 8)
-		return lsl::cf_int8;
-	if (bits == 16)
-		return lsl::cf_int16;
-	if (bits == 32)
-		return lsl::cf_float32;
-	if (bits == 64)
-		return lsl::cf_double64;
-	throw std::runtime_error("Unsupported bitrate.");
+	if (bits == 8) return lsl::cf_int8;
+	if (bits == 16) return lsl::cf_int16;
+	if (bits == 32) return lsl::cf_float32;
+	// if (bits == 64) return lsl::cf_double64;
+	throw std::runtime_error("Unsupported sample bits.");
 }
 
-
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
+MainWindow::MainWindow(QWidget *parent, const char *config_file)
+	: QMainWindow(parent), ui(new Ui::MainWindow),
+	  devices(QAudioDeviceInfo::availableDevices(QAudio::Mode::AudioInput)) {
 	ui->setupUi(this);
-	
-	QObject::connect(ui->linkButton, SIGNAL(clicked()), this, SLOT(link_audio()));
+	connect(ui->actionLoad_Configuration, &QAction::triggered, [this]() {
+		load_config(QFileDialog::getOpenFileName(
+			this, "Load Configuration File", "", "Configuration Files (*.cfg)"));
+	});
+	connect(ui->actionSave_Configuration, &QAction::triggered, [this]() {
+		save_config(QFileDialog::getSaveFileName(
+			this, "Save Configuration File", "", "Configuration Files (*.cfg)"));
+	});
+	connect(ui->actionQuit, &QAction::triggered, this, &MainWindow::close);
+	connect(ui->actionAbout, &QAction::triggered, [this]() {
+		QString infostr = QStringLiteral("LSL library version: ") +
+						  QString::number(lsl::library_version()) +
+						  "\nLSL library info:" + lsl::lsl_library_info();
+		QMessageBox::about(this, "About this app", infostr);
+	});
+	connect(ui->linkButton, &QPushButton::clicked, this, &MainWindow::toggleRecording);
 
+	// audio devices
+	for (auto info : devices) ui->input_device->addItem(info.deviceName());
+	auto changeSignal = static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged);
+	connect(ui->input_device, changeSignal, this, &MainWindow::deviceChanged);
+	deviceChanged();
+	connect(ui->btn_checkfmt, &QPushButton::clicked, this, &MainWindow::checkAudioFormat);
+
+	QString cfgfilepath = find_config_file(config_file);
+	load_config(cfgfilepath);
+}
+
+QAudioDeviceInfo MainWindow::currentDeviceInfo() {
+	return devices.at(ui->input_device->currentIndex());
+}
+
+void MainWindow::deviceChanged() {
+	auto info = currentDeviceInfo();
+	updateComboBoxItems(ui->input_channels, info.supportedChannelCounts());
+	updateComboBoxItems(ui->input_samplerate, info.supportedSampleRates());
+	updateComboBoxItems(ui->input_samplesize, info.supportedSampleSizes());
+	setFmt(info.preferredFormat());
+}
+
+QAudioFormat MainWindow::selectedAudioFormat() {
+	auto info = currentDeviceInfo();
+	QAudioFormat fmt(info.preferredFormat());
+	fmt.setByteOrder(QAudioFormat::LittleEndian);
+	fmt.setSampleType(QAudioFormat::SampleType::SignedInt);
+	qInfo() << "Preferred: " << fmt;
+	fmt.setSampleRate(ui->input_samplerate->currentText().toInt());
+	fmt.setSampleSize(ui->input_samplesize->currentText().toInt());
+	fmt.setChannelCount(ui->input_channels->currentText().toInt());
+	return fmt;
+}
+
+void MainWindow::setFmt(const QAudioFormat &fmt) {
+	qInfo() << "Setting fmt: " << fmt;
+	ui->input_samplerate->setCurrentText(QString::number(fmt.sampleRate()));
+	ui->input_samplesize->setCurrentText(QString::number(fmt.sampleSize()));
+	ui->input_channels->setCurrentText(QString::number(fmt.channelCount()));
+	auto fmtStr = QStringLiteral("%1 channels, %2 bit @ %3 Hz")
+					  .arg(fmt.channelCount())
+					  .arg(fmt.sampleSize())
+					  .arg(fmt.sampleRate());
+	ui->label_fmtresult->setText(fmtStr);
+}
+
+void MainWindow::checkAudioFormat() {
+	auto fmt = selectedAudioFormat();
+	auto info = currentDeviceInfo();
+	if (info.isFormatSupported(fmt))
+		qInfo() << "Format is supported";
+	else {
+		QMessageBox::warning(this, "Format not supported",
+			"The requested format isn't supported; a supported format was automatically selected.");
+		fmt = info.nearestFormat(fmt);
+	}
+	setFmt(fmt);
+}
+
+void MainWindow::updateComboBoxItems(QComboBox *box, QList<int> values) {
+	const int lastValue = box->currentText().toInt();
+	box->clear();
+	for (int value : values) {
+		box->addItem(QString::number(value));
+		if (lastValue == value) box->setCurrentIndex(box->count() - 1);
+	}
+}
+
+void MainWindow::load_config(const QString &filename) {
+	QSettings settings(filename, QSettings::Format::IniFormat);
+	ui->input_name->setText(settings.value("AudioCapture/name", "MyAudioStream").toString());
+	// ui->input_device->setValue(settings.value("AudioCapture/device", 0).toInt());
+}
+
+void MainWindow::save_config(const QString &filename) {
+	QSettings settings(filename, QSettings::Format::IniFormat);
+	settings.beginGroup("AudioCapture");
+	settings.setValue("name", ui->input_name->text());
+	settings.setValue("device", ui->input_device->currentText());
+	settings.sync();
 }
 
 void MainWindow::closeEvent(QCloseEvent *ev) {
-	if (reader_thread_)
+	if (reader) {
+		QMessageBox::warning(this, "Recording still running", "Can't quit while recording");
 		ev->ignore();
+	}
 }
 
-void MainWindow::link_audio() {
-	if (reader_thread_) {
-		// === perform unlink action ===
-		shutdown_ = true;
+void MainWindow::toggleRecording() {
+	if (!reader) {
+		// read the configuration from the UI fields
+		std::string name = ui->input_name->text().toStdString();
+		auto fmt = selectedAudioFormat();
+		int channel_count = fmt.channelCount();
+		int samplerate = fmt.sampleRate();
+		auto channel_format = bits2fmt(fmt.sampleSize());
 
-		try {
-			reader_thread_->interrupt();
-			reader_thread_->join();
-			reader_thread_.reset();
-		} catch(std::exception &e) {
-			QMessageBox::critical(this,"Error",(std::string("Could not stop the background processing: ")+=e.what()).c_str(),QMessageBox::Ok);
-			return;
-		}
+		lsl::stream_info info(name, "Audio", channel_count, samplerate, channel_format);
+		info.desc().append_child("provider").append_child_value("api", "QtMultimedia");
+		info.desc().append_child_value("device", ui->input_device->currentText().toStdString());
 
+		audiodev = std::make_unique<QAudioInput>(currentDeviceInfo(), fmt, this);
+		auto buffer_ms = ui->input_buffersize->value();
+		audiodev->setBufferSize(fmt.bytesForDuration(2 * buffer_ms * 1000));
+		reader = std::make_unique<LslPusher>(lsl::stream_outlet(info));
+		reader->open(QIODevice::OpenModeFlag::WriteOnly);
+
+		audiodev->start(&*reader);
+		qInfo() << audiodev->state() << ' ' << audiodev->error();
+		ui->linkButton->setText("Unlink");
+	} else {
+		qInfo() << "Read " << reader->pos() << " bytes, " <<
+				   reader->samples_written() << " samples, " <<
+				   ((double) reader->samples_written()/audiodev->format().sampleRate()) << 's';
+		audiodev->stop();
+		qInfo() << audiodev->state() << ' ' << audiodev->error();
+		reader->close();
+		audiodev = nullptr;
+		reader = nullptr;
 		ui->linkButton->setText("Link");
-		ui->lineEdit->setEnabled(true);
-		ui->lineEdit->setReadOnly(false);
-
-	} else {
-		// === perform link action ===
-		shutdown_ = false;
-
-		IMMDeviceEnumerator *pEnumerator = NULL;
-		IMMDevice *pDevice = NULL;
-		IAudioClient *pAudioClient = NULL;
-		IAudioCaptureClient *pCaptureClient = NULL;
-		WAVEFORMATEX *pwfx = NULL;
-		LPWSTR deviceId = L"unidentified";
-
-		try {
-			// get the device enumerator
-			if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator)))
-				throw std::runtime_error("Could not create multimedia device enumerator.");
-
-			// ask for the default capture endpoint (note: this is acting as a "multimedia" client)
-			if (FAILED(pEnumerator->GetDefaultAudioEndpoint(eCapture, eMultimedia, &pDevice)))
-				throw std::runtime_error("Could not get a default recording device -- is one selected?");
-
-			// try to activate and IAudioClient
-			if (FAILED(pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void**)&pAudioClient))) {
-				DWORD state;
-				pDevice->GetState(&state);
-				switch (state) {
-				case DEVICE_STATE_DISABLED:
-					throw std::runtime_error("Could not activate the default recording device -- is it enabled?.");
-				case DEVICE_STATE_UNPLUGGED:
-					throw std::runtime_error("Could not activate the default recording device -- is it plugged in?");
-				case DEVICE_STATE_NOTPRESENT:
-					throw std::runtime_error("Could not activate the default recording device -- is one selected?");
-				default:
-					throw std::runtime_error("Failed to activate the default recording device.");
-				}
-			}
-
-			// get device ID
-			pDevice->GetId(&deviceId);
-
-			// get mixing format
-			if (FAILED(pAudioClient->GetMixFormat(&pwfx)))
-				throw std::runtime_error("Could not get the data format of the recording device -- make sure it is available for use.");
-
-			// initialize a shared buffer
-			if (FAILED(pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, REFTIMES_PER_SEC*buffer_duration, 0, pwfx, NULL)))
-				throw std::runtime_error("Could not initialize a shared audio client.");
-
-			// get the capture service
-			if (FAILED(pAudioClient->GetService(__uuidof(IAudioCaptureClient), (void**)&pCaptureClient)))
-				throw std::runtime_error("Unexpected error: could not get the audio capture service.");
-
-			// try to start the actual recording
-			if (FAILED(pAudioClient->Start()))
-				throw std::runtime_error("Could not start recording.");
-
-			// start the reader thread (which is responsible for deallocation of everything)
-			reader_thread_.reset(new boost::thread(&MainWindow::process_samples,this,pEnumerator,pDevice,pAudioClient,pCaptureClient,pwfx,deviceId));
-
-			// now we are linked
-			ui->linkButton->setText("Unlink");
-			ui->lineEdit->setDisabled(true);
-			ui->lineEdit->setReadOnly(true);
-		} catch(std::runtime_error &e) {
-			// got an exception during initialization: release resources...
-			if (pCaptureClient)
-				pCaptureClient->Release();
-			if (pAudioClient)
-				pAudioClient->Release();
-			if (pDevice)
-				pDevice->Release();
-			if (pEnumerator)
-				pEnumerator->Release();
-			if (pwfx)
-				CoTaskMemFree(pwfx);
-			// and show message box
-			QMessageBox::critical(this,"Initialization Error", (std::string("Could not start recording: ") += e.what()).c_str(),QMessageBox::Ok);
-		}		
 	}
 }
 
-MainWindow::~MainWindow() {
-	delete ui;
+
+/**
+ * Find a config file to load. This is (in descending order or preference):
+ * - a file supplied on the command line
+ * - [executablename].cfg in one the the following folders:
+ *	- the current working directory
+ *	- the default config folder, e.g. '~/Library/Preferences' on OS X
+ *	- the executable folder
+ * @param filename	Optional file name supplied e.g. as command line parameter
+ * @return Path to a found config file
+ */
+QString MainWindow::find_config_file(const char *filename) {
+	if (filename) {
+		QString qfilename(filename);
+		if (!QFileInfo::exists(qfilename))
+			QMessageBox(QMessageBox::Warning, "Config file not found",
+				QStringLiteral("The file '%1' doesn't exist").arg(qfilename), QMessageBox::Ok,
+				this);
+		else
+			return qfilename;
+	}
+	QFileInfo exeInfo(QCoreApplication::applicationFilePath());
+	QString defaultCfgFilename(exeInfo.completeBaseName() + ".cfg");
+	QStringList cfgpaths;
+	cfgpaths << QDir::currentPath()
+			 << QStandardPaths::standardLocations(QStandardPaths::ConfigLocation) << exeInfo.path();
+	for (auto path : cfgpaths) {
+		QString cfgfilepath = path + QDir::separator() + defaultCfgFilename;
+		if (QFileInfo::exists(cfgfilepath)) return cfgfilepath;
+	}
+	QMessageBox(QMessageBox::Warning, "No config file not found",
+		QStringLiteral("No default config file could be found"), QMessageBox::Ok, this);
+	return "";
 }
 
 
-// === the actual sample processing thread ===
-void MainWindow::process_samples(IMMDeviceEnumerator *pEnumerator,IMMDevice *pDevice,IAudioClient *pAudioClient,IAudioCaptureClient *pCaptureClient,WAVEFORMATEX *pwfx,LPWSTR devID) {
-	// set up the stream info
-	std::wstring tmp(devID);
-	source_id = QHostInfo::localHostName().toStdString() += std::string(tmp.begin(),tmp.end());
-	lsl::stream_info info(ui->lineEdit->text().toStdString(),"Audio",pwfx->nChannels,pwfx->nSamplesPerSec,lsl::cf_float32,source_id);
-	info.desc().append_child("provider").append_child_value("api","WASAPI");
-	lsl::xml_element channels = info.desc().append_child("channels");
-	if (pwfx->nChannels == 1) {
-		channels.append_child("channel").append_child_value("label","FrontCenter");
-	} else {
-		channels.append_child("channel").append_child_value("label","FrontLeft");
-		channels.append_child("channel").append_child_value("label","FrontRight");
-	}
-
-	// <synchronization> meta-data
-	info.desc().append_child("synchronization")
-		.append_child_value("offset_mean", "0.01047")
-		.append_child_value("offset_rms", "0.000033")
-		.append_child_value("offset_median", "0.01046")
-		.append_child_value("offset_5_centile", "0.01003")
-		.append_child_value("offset_95_centile", "0.01095");
-
-	// create the outlet
-	lsl::stream_outlet out(info);
-
-	// repeat until interrupted (can re-connect if device was lost)
-	while (!shutdown_) {
-		try {
-			try {
-				// for each chunk update...
-				while (!shutdown_) {
-					// sleep for the update interval
-					boost::this_thread::sleep(boost::posix_time::milliseconds(1000.0*update_interval));
-
-					// get the length of the first packet
-					UINT32 packetLength = 0;
-					if (FAILED(pCaptureClient->GetNextPacketSize(&packetLength)))
-						throw std::runtime_error("Device got invalidated.");
-
-					LARGE_INTEGER now,freq;				// current time, timer frequency
-					QueryPerformanceFrequency(&freq);
-
-					int channels = pwfx->nChannels;
-
-					// consume each chunk...
-					while (packetLength) {
-						BYTE *pData;					// pointer to the data...
-						DWORD flags;					// flags of the recording device
-						UINT64 captureTime;				// capture time of the first sample (in 100-ns units)
-						UINT32 numFramesAvailable;		// number of frames available in the buffer
-
-						// get the available data in the shared buffer
-						if (FAILED(pCaptureClient->GetBuffer(&pData, &numFramesAvailable, &flags, NULL, &captureTime)))
-							throw std::runtime_error("Device got invalidated.");
-
-						// determine the age of the last sample of the chunk
-						QueryPerformanceCounter(&now);
-						double firstSampleAge = (double)(now.QuadPart)/freq.QuadPart - (double)(captureTime)/REFTIMES_PER_SEC;	// time passed since the sample was captured
-						double lastSampleAge = (firstSampleAge - ((double)(numFramesAvailable-1))/pwfx->nSamplesPerSec);		// the last sample is younger than the first one...
-						double lastSampleTime = lsl::local_clock() - lastSampleAge;
-
-						if (!(flags&AUDCLNT_BUFFERFLAGS_SILENT)) {
-							// submit the data to LSL
-							float *audioValues = (float*)pData;
-							std::vector<std::vector<float> > chunk(numFramesAvailable,std::vector<float>(channels));
-							for (unsigned k=0;k<numFramesAvailable;k++)
-								chunk[k].assign(&audioValues[k*channels],&audioValues[(k+1)*channels]);
-							out.push_chunk(chunk, lastSampleTime);
-						}
-
-						// move on to next chunk
-						if (FAILED(pCaptureClient->ReleaseBuffer(numFramesAvailable)))
-							throw std::runtime_error("Device got invalidated.");
-						if (FAILED(pCaptureClient->GetNextPacketSize(&packetLength)))
-							throw std::runtime_error("Device got invalidated.");
-					}
-				}
-			}
-			catch(std::runtime_error &) {
-				// device invalidated -- release...
-				pCaptureClient->Release(); 
-				pCaptureClient = 0;
-				pAudioClient->Release(); 
-				pAudioClient = 0;
-				while (true) {
-					// sleep for a bit
-					boost::this_thread::sleep(boost::posix_time::milliseconds(1000.0*retry_interval));
-					// try to reacquire with same parameters
-					if (FAILED(pDevice->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void**)&pAudioClient)))
-						continue;
-					if (FAILED(pAudioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, REFTIMES_PER_SEC*buffer_duration, 0, pwfx, NULL)))
-						continue;
-					if (FAILED(pAudioClient->GetService(__uuidof(IAudioCaptureClient),(void**)&pCaptureClient)))
-						continue;
-					if (FAILED(pAudioClient->Start()))
-						continue;
-					// now back in business again...
-					break;
-				}
-			}
-		} catch(boost::thread_interrupted &) {
-			// thread interrupted -- exit!
-			break;
-		}
-	}
-
-	// stop recording
-	if (pAudioClient)
-		pAudioClient->Stop();
-
-	// finally release all allocated resources
-	if (pCaptureClient)
-		pCaptureClient->Release();
-	if (pAudioClient)
-		pAudioClient->Release();
-	if (pDevice)
-		pDevice->Release();
-	if (pEnumerator)
-		pEnumerator->Release();
-	if (pwfx)
-		CoTaskMemFree(pwfx);
-}
+MainWindow::~MainWindow() noexcept = default;
