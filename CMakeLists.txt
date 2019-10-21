@@ -26,7 +26,4 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 # target_compile_features(${PROJECT_NAME} PRIVATE cxx_auto_type cxx_lambda_init_captures)
 
 installLSLApp(${PROJECT_NAME})
-installLSLAuxFiles(${PROJECT_NAME}
-	${PROJECT_NAME}.cfg
-)
 LSLGenerateCPackConfig()

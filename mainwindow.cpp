@@ -27,6 +27,10 @@ lsl::channel_format_t bits2fmt(int bits) {
 MainWindow::MainWindow(QWidget *parent, const char *config_file)
 	: QMainWindow(parent), ui(new Ui::MainWindow),
 	  devices(QAudioDeviceInfo::availableDevices(QAudio::Mode::AudioInput)) {
+	if(devices.empty()) {
+		QMessageBox::warning(this, "Fatal error", "No capture devices found, quitting.");
+		exit(1);
+	}
 	ui->setupUi(this);
 	connect(ui->actionLoad_Configuration, &QAction::triggered, [this]() {
 		load_config(QFileDialog::getOpenFileName(
