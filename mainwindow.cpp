@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QHostInfo>
 #include <fstream>
 #include <lsl_cpp.h>
 #include <string>
@@ -148,7 +149,9 @@ void MainWindow::toggleRecording() {
 		int samplerate = fmt.sampleRate();
 		auto channel_format = bits2fmt(fmt.sampleSize());
 
-		lsl::stream_info info(name, "Audio", channel_count, samplerate, channel_format);
+		std::string stream_id = QHostInfo::localHostName().toStdString();
+
+		lsl::stream_info info(name, "Audio", channel_count, samplerate, channel_format, stream_id);
 		info.desc().append_child("provider").append_child_value("api", "QtMultimedia");
 		info.desc().append_child_value("device", ui->input_device->currentText().toStdString());
 
