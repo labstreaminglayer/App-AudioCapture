@@ -2,5 +2,6 @@ ui_*.h
 /build*/
 /CMakeLists.txt.user
 /CMakeLists.json
+/CMakeSettings.json
 .vs/
 out/
