@@ -1,6 +1,6 @@
 # Overview
 
-The AudioCapture application uses Qt's [QAudioInput](https://doc.qt.io/qt-5/qaudioinput.html) for cross-platform audio capturing. This program has been tested on Windows and MacOS.
+The AudioCapture application uses Qt's [QAudioInput](https://doc.qt.io/qt-5/qaudioinput.html) for cross-platform audio capturing. This program has been tested on Windows and MacOS. Download the latest version [from the releases page](https://github.com/labstreaminglayer/App-AudioCapture/releases).
 
 # Usage
 Using this app is very simple:
