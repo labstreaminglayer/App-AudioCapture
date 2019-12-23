@@ -71,7 +71,7 @@ void MainWindow::deviceChanged() {
 	updateComboBoxItems(ui->input_samplerate, info.supportedSampleRates());
 	updateComboBoxItems(ui->input_samplesize, info.supportedSampleSizes());
 	QAudioFormat fmt(info.preferredFormat());
-	if ((fmt.sampleSize() == 8) && info.supportedSampleSizes().contains(16)) fmt.setSampleSize(16);
+	if ((fmt.sampleSize() == 8 || fmt.sampleSize() == 24) && info.supportedSampleSizes().contains(16)) fmt.setSampleSize(16);
 	setFmt(fmt);
 }
 

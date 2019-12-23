@@ -28,6 +28,11 @@ target_link_libraries(${PROJECT_NAME}
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 # target_compile_features(${PROJECT_NAME} PRIVATE cxx_auto_type cxx_lambda_init_captures)
 
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/MacOSXBundleInfo.plist"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "LabStreamingLayer.AudioCapture")
+
 # Copy the required dll's into the build folder --> useful for debugging from IDE
 # create a list of files to copy
 set(THIRD_PARTY_DLLS
@@ -46,5 +51,4 @@ foreach(_lib ${THIRD_PARTY_DLLS})
 endforeach()
 
 installLSLApp(${PROJECT_NAME})
-LSLGenerateCPackConfig()
 LSLGenerateCPackConfig()
