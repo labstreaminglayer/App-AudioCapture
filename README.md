@@ -6,8 +6,8 @@ The AudioCapture application uses Qt's [QAudioInput](https://doc.qt.io/qt-5/qaud
 Using this app is very simple:
 
   * Make sure that you have connected a microphone to your computer.
-  * Start the AudioCapture app. You should see a window like the following. (TODO: New image)
-> ![audiocapturewin.png](audiocapturewin.png)
+  * Start the AudioCapture app. You should see a window like the following.
+> ![audiocapture.png](audiocapture.png)
   * Set the audio capture parameters.
     * Make sure the correct audio device is selected.
     * The preferred "Sample Size" should be 16. In our testing, 8- and 32-bits per sample did not produce useful data.
