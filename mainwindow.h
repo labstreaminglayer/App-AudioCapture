@@ -1,49 +1,42 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-
-// boost
-#include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
-// Qt
+#include "ui_mainwindow.h"
+#include <QAudioDeviceInfo>
 #include <QMainWindow>
-#include <QCloseEvent>
-#include <QMessageBox>
-#include <QHostInfo>
-// WASAPI
-#include <Audioclient.h>
-#include <Mmdeviceapi.h>
-// LSL
-#include "../../LSL/liblsl/include/lsl_cpp.h"
-
+#include <memory> //for std::unique_ptr
 
 namespace Ui {
 class MainWindow;
 }
 
 class MainWindow : public QMainWindow {
-    Q_OBJECT
-
+	Q_OBJECT
 public:
-    explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow();
+	explicit MainWindow(QWidget *parent, const char *config_file);
+	~MainWindow() noexcept override;
 
-private slots:    
-	// close event: used to disable closing while linked
-    void closeEvent(QCloseEvent *ev);
-
-    // start/stop the linkage
-    void link_audio();
+private slots:
+	void closeEvent(QCloseEvent *ev) override;
+	void toggleRecording();
+	void deviceChanged();
+	void checkAudioFormat();
 
 private:
-	// the actual processing thread 
-	void process_samples(IMMDeviceEnumerator *pEnumerator,IMMDevice *pDevice,IAudioClient *pAudioClient,IAudioCaptureClient *pCaptureClient,WAVEFORMATEX *pwfx,LPWSTR devID);
+	// Audio device handling
+	QAudioDeviceInfo currentDeviceInfo();
+	void setFmt(const QAudioFormat &fmt);
+	QAudioFormat selectedAudioFormat();
+	void updateSampleRates();
+	void updateComboBoxItems(QComboBox *box, QList<int> values);
 
-	bool shutdown_;										// tells the thread that it should shut itself down
-	boost::shared_ptr<boost::thread> reader_thread_;	// the background thread
-    Ui::MainWindow *ui;									// window pointer
-	
-	std::string source_id;
-
+	// function for loading / saving the config file
+	QString find_config_file(const char *filename);
+	void load_config(const QString &filename);
+	void save_config(const QString &filename);
+	std::unique_ptr<class LslPusher> reader;
+	std::unique_ptr<class QAudioInput> audiodev;
+	std::unique_ptr<Ui::MainWindow> ui; // window pointer
+	QList<QAudioDeviceInfo> devices;
 };
 
 #endif // MAINWINDOW_H

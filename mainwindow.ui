@@ -6,45 +6,111 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>200</width>
-    <height>144</height>
+    <width>254</width>
+    <height>379</height>
    </rect>
-  </property>
-  <property name="minimumSize">
-   <size>
-    <width>200</width>
-    <height>20</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>200</width>
-    <height>144</height>
-   </size>
   </property>
   <property name="windowTitle">
    <string>AudioCaptureWin Connector</string>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0" rowspan="3">
+   <layout class="QFormLayout" name="formLayout_2">
+    <item row="1" column="0">
+     <widget class="QLabel" name="label_name">
+      <property name="text">
+       <string>Name</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="0" colspan="2">
      <widget class="QPushButton" name="linkButton">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="text">
        <string>Link</string>
       </property>
      </widget>
     </item>
-    <item row="4" column="0">
-     <widget class="QLineEdit" name="lineEdit">
+    <item row="1" column="1">
+     <widget class="QLineEdit" name="input_name"/>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_device">
       <property name="text">
-       <string>AudioCaptureWin</string>
+       <string>Device</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label">
+    <item row="3" column="1">
+     <widget class="QComboBox" name="input_device"/>
+    </item>
+    <item row="6" column="0">
+     <widget class="QLabel" name="label_channels">
       <property name="text">
-       <string>Stream Name</string>
+       <string>Channels</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_samplerate">
+      <property name="text">
+       <string>Sample Rate</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="1">
+     <widget class="QComboBox" name="input_samplerate"/>
+    </item>
+    <item row="5" column="0">
+     <widget class="QLabel" name="label_samplesize">
+      <property name="text">
+       <string>Sample Size</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1">
+     <widget class="QComboBox" name="input_samplesize"/>
+    </item>
+    <item row="6" column="1">
+     <widget class="QComboBox" name="input_channels"/>
+    </item>
+    <item row="8" column="1">
+     <widget class="QLabel" name="label_fmtresult"/>
+    </item>
+    <item row="8" column="0">
+     <widget class="QPushButton" name="btn_checkfmt">
+      <property name="text">
+       <string>&amp;Check Format</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="0">
+     <widget class="QLabel" name="label_buffersize">
+      <property name="text">
+       <string>Buffer Size</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="1">
+     <widget class="QSpinBox" name="input_buffersize">
+      <property name="suffix">
+       <string> ms</string>
+      </property>
+      <property name="minimum">
+       <number>5</number>
+      </property>
+      <property name="maximum">
+       <number>1000</number>
+      </property>
+      <property name="singleStep">
+       <number>10</number>
+      </property>
+      <property name="value">
+       <number>100</number>
       </property>
      </widget>
     </item>
@@ -55,12 +121,58 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>200</width>
-     <height>18</height>
+     <width>254</width>
+     <height>30</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="actionLoad_Configuration"/>
+    <addaction name="actionSave_Configuration"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <widget class="QMenu" name="menuAbout">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuAbout"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionLoad_Configuration">
+   <property name="text">
+    <string>&amp;Load Configuration</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionSave_Configuration">
+   <property name="text">
+    <string>&amp;Save Configuration</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>&amp;Quit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>&amp;About</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>
