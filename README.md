@@ -20,6 +20,6 @@ Using this app is very simple:
 
 # Further Notes
 
-The previous version of AudioCaptureWin can be found as a tagged release in this repository.
+The previous version of AudioCaptureWin can be found as [release v0.1](https://github.com/labstreaminglayer/App-AudioCapture/releases/tag/v0.1) in this repository.
 
 For Windows XP there is an older LSL audio recording app available on request; it uses the [irrKlang](http://www.ambiera.com/irrklang/) audio library, which in turn uses DirectX audio on Windows. That application does not support support accurate time synchronization and is therefore deprecated.
