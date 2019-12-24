@@ -6,6 +6,7 @@ The AudioCapture application uses Qt's [QAudioInput](https://doc.qt.io/qt-5/qaud
 Using this app is very simple:
 
   * Make sure that you have connected a microphone to your computer.
+  * On Ubuntu, you need to `sudo apt-get install libqt5multimedia5-plugins`
   * Start the AudioCapture app. You should see a window like the following.
 > ![audiocapture.PNG](audiocapture.PNG)
   * Set the audio capture parameters.
@@ -16,6 +17,11 @@ Using this app is very simple:
   * If a firewall complains, allow the app to connect to the network.
   * Please allow microphone access if asked.
   * You should now have a stream on your lab network that has type "Audio" and its name is the name entered in the GUI. Note that you cannot close the app while it is linked.
+
+# Build
+
+The build instructions for this app are mostly the same as the [generic LSL App build instructions](https://labstreaminglayer.readthedocs.io/dev/app_build.html).
+Qt5 Multimedia module is required. On Ubuntu this does not come with qt5 by default. Install it with `sudo apt-get install qtmultimedia5-dev`.
 
 
 # Further Notes
