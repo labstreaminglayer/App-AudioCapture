@@ -24,11 +24,13 @@ jobs:
         - windows-latest
         - macOS-latest
       fail-fast: false
+
     steps:
     - uses: actions/checkout@v2
+
     - name: CMake version
       run: cmake --version
-    
+
     - name: download liblsl (Ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -36,13 +38,13 @@ jobs:
            curl -L ${LSL_URL}/${LSL_RELEASE}${LSL_RELEASE_SUFFIX}/liblsl-${LSL_RELEASE}-Linux64-bionic.deb -o liblsl.deb
            sudo dpkg -i liblsl.deb
            sudo apt install -y qtbase5-dev qtmultimedia5-dev
-      
+
     - name: download liblsl (Windows)
       if: matrix.os == 'windows-latest'
       run: |
            Invoke-WebRequest -Uri $Env:LSL_URL/$Env:LSL_RELEASE$Env:LSL_RELEASE_SUFFIX/liblsl-$Env:LSL_RELEASE-Win64.zip -o liblsl.7z
            7z x liblsl.7z -oLSL
-      
+
     - name: download liblsl (macOS)
       if: matrix.os == 'macOS-latest'
       run: |
@@ -51,24 +53,33 @@ jobs:
            tar -xvf liblsl.tar.bz2 -C LSL
            brew install qt
            echo '::set-env name=CMAKE_PREFIX_PATH::/usr/local/opt/qt'
-      
+
     - name: Install Qt
       if: matrix.os == 'windows-latest'
       # uses: jurplel/install-qt-action@v2
       uses: ouuan/install-qt-action@v2.3.1 # workaround until the aqtinstall timeout is fixed
       with:
         version: 5.14.0
-      
+
     - name: Configure CMake
       shell: bash
       run: |
            cmake -S . -B build -DLSL_INSTALL_ROOT=$PWD/LSL/ -DCPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -DCPACK_DEBIAN_PACKAGE_DEPENDS=1
-    
+
     - name: make
       run: cmake --build build --config Release -j
-    
-    - name: package
+
+    - name: install
       run: cmake --build build --config Release -j --target install
+
+    - name: package
+      run: cmake --build build --config Release -j --target package
+
+    - name: TestA
+      run: |
+        pwd
+        ls -all
+
     - uses: actions/upload-artifact@master
       with:
         name: pkg-${{ matrix.os }}
@@ -89,27 +100,32 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
+
     - name: Download artifact - ubuntu
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/download-artifact@v1
       with:
         name: pkg-ubuntu-latest
+
     - name: Download artifact - windows
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/download-artifact@v1
       with:
         name: pkg-windows-latest
+
     - name: Download artifact - macos
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/download-artifact@v1
       with:
         name: pkg-macOS-latest
-    - name: Test
+
+    - name: TestB
       if: startsWith(github.ref, 'refs/tags/')
       run: |
         pwd
         ls -all
         ls pkg-ubuntu-latest
+
     - name: Upload Release Asset
       if: startsWith(github.ref, 'refs/tags/')
       id: upload-release-asset 
