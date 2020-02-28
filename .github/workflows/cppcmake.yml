@@ -75,10 +75,10 @@ jobs:
     - name: TestA
       run: |
         pwd
-        ls -all
-        ls build -all
+        ls
+        ls build
         pwd
-        ls build/install -all
+        ls build/install
 
     - name: package (ubuntu)
       if: matrix.os == 'ubuntu-latest'
