@@ -30,6 +30,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: CMake version
       run: cmake --version
+    
     - name: download liblsl (Ubuntu)
       run: |
            echo ${{ github.ref }}
@@ -37,11 +38,13 @@ jobs:
            sudo dpkg -i liblsl.deb
            sudo apt install -y qtbase5-dev qtmultimedia5-dev
       if: matrix.os == 'ubuntu-latest'
+
     - name: download liblsl (Windows)
       run: |
            Invoke-WebRequest -Uri $Env:LSL_URL/$Env:LSL_RELEASE$Env:LSL_RELEASE_SUFFIX/liblsl-$Env:LSL_RELEASE-Win64.zip -o liblsl.7z
            7z x liblsl.7z -oLSL
       if: matrix.os == 'windows-latest'
+
     - name: download liblsl (macOS)
       run: |
            curl -L ${LSL_URL}/${LSL_RELEASE}${LSL_RELEASE_SUFFIX}/liblsl-${LSL_RELEASE}-OSX64.tar.bz2 -o liblsl.tar.bz2
@@ -50,18 +53,22 @@ jobs:
            brew install qt
            echo '::set-env name=CMAKE_PREFIX_PATH::/usr/local/opt/qt'
       if: matrix.os == 'macOS-latest'
+    
     - name: Install Qt
       # uses: jurplel/install-qt-action@v2
       uses: ouuan/install-qt-action@v2.3.1 # workaround until the aqtinstall timeout is fixed
       with:
         version: 5.14.0
       if: matrix.os == 'windows-latest'
+    
     - name: Configure CMake
       shell: bash
       run: |
            cmake -S . -B build -DLSL_INSTALL_ROOT=$PWD/LSL/ -DCPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -DCPACK_DEBIAN_PACKAGE_DEPENDS=1
+    
     - name: make
       run: cmake --build build --config Release -j
+    
     - name: package
       run: cmake --build build --config Release -j --target install
     - uses: actions/upload-artifact@master
@@ -80,6 +87,7 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
+
     - name: Upload Release Asset
       if: startsWith(github.ref, 'refs/tags/')
       id: upload-release-asset 
@@ -88,6 +96,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./pkg-${{ matrix.os }}.zip
+        asset_path: build/install/pkg-${{ matrix.os }}.zip
         asset_name: pkg-${{ matrix.os }}.zip
         asset_content_type: application/zip
