@@ -30,6 +30,7 @@ jobs:
       run: cmake --version
     - name: download liblsl (Ubuntu)
       run: |
+           echo ${{ github.ref }}
            curl -L ${LSL_URL}/${LSL_RELEASE}${LSL_RELEASE_SUFFIX}/liblsl-${LSL_RELEASE}-Linux64-bionic.deb -o liblsl.deb
            sudo dpkg -i liblsl.deb
            sudo apt install -y qtbase5-dev qtmultimedia5-dev
