@@ -71,14 +71,24 @@ jobs:
 
     - name: install
       run: cmake --build build --config Release -j --target install
-
-    - name: package
-      run: cmake --build build --config Release -j --target package
-
-    - name: TestA
+      
+      - name: TestA
       run: |
         pwd
         ls -all
+        ls build -all
+        pwd
+        ls build/install -all
+
+    - name: package (ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: cmake --build build --config Release -j --target package
+
+    - name: package (macOS)
+      if: matrix.os == 'macOS-latest'
+      run:|
+        cd build/install
+        for app in *.app; do /usr/local/opt/qt/bin/macdeployqt ${app} -dmg; mv "${app%.app}.dmg "${app%.app}-${LSL_RELEASE}-MacOS64.dmg"; done
 
     - uses: actions/upload-artifact@master
       with:
