@@ -89,22 +89,19 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-        
     - name: Download Artifacts
       if: startsWith(github.ref, 'refs/tags/')
-      - uses: actions/download-artifact@v1
-        with:
-          name: |
-            pkg-ubuntu-latest
-            pkg-windows-latest
-            pkg-macOS-latest
-            
+      uses: actions/download-artifact@v1
+      with:
+        name: |
+          pkg-ubuntu-latest
+          pkg-windows-latest
+          pkg-macOS-latest
     - name: Test
       if: startsWith(github.ref, 'refs/tags/')
       run: |
         pwd
         ls
-
     - name: Upload Release Asset
       if: startsWith(github.ref, 'refs/tags/')
       id: upload-release-asset 
