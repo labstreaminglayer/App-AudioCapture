@@ -67,7 +67,7 @@ jobs:
         path: build/install
         
     - name: Create Release
-      if: startsWith(github.ref, "v")
+      if: startsWith(github.ref, 'v')
       id: create_release
       uses: actions/create-release@v1
       env:
@@ -78,7 +78,7 @@ jobs:
         draft: false
         prerelease: false
     - name: Upload Release Asset
-      if: startsWith(github.ref, "v")
+      if: startsWith(github.ref, 'v')
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1
       env:
