@@ -66,17 +66,17 @@ jobs:
       run: |
            cmake -S . -B build -DLSL_INSTALL_ROOT=$PWD/LSL/ -DCPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -DCPACK_DEBIAN_PACKAGE_DEPENDS=1
 
-    - name: make
+    - name: Make
       run: cmake --build build --config Release -j
 
-    - name: install
+    - name: Install
       run: cmake --build build --config Release -j --target install
 
-    - name: package (ubuntu)
+    - name: Package (ubuntu)
       if: matrix.os == 'ubuntu-latest'
       run: cmake --build build --config Release -j --target package
 
-    - name: package (macOS)
+    - name: Package (macOS)
       if: matrix.os == 'macOS-latest'
       run: |
         cd build
@@ -93,12 +93,20 @@ jobs:
         pwd
         ls build/install
 
-    - name: Upload Artifacts
+    - name: Upload Artifacts (ubuntu)
+      if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@master
       with:
         name: pkg-${{ matrix.os }}
-        path: build/install
-        
+        path: build/*.deb
+    
+    - name: Upload Artifacts (macOS)
+      if: matrix.os == 'macOS-latest'
+      uses: actions/upload-artifact@master
+      with:
+        name: pkg-${{ matrix.os }}
+        path: build/*.dmg
+    
   release:
     needs: build
     runs-on: ubuntu-latest
