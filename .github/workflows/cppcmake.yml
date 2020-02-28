@@ -72,7 +72,7 @@ jobs:
     - name: install
       run: cmake --build build --config Release -j --target install
       
-      - name: TestA
+    - name: TestA
       run: |
         pwd
         ls -all
