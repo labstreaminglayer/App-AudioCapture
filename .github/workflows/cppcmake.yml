@@ -79,7 +79,7 @@ jobs:
     - name: package (macOS)
       if: matrix.os == 'macOS-latest'
       run: |
-        cd build/install
+        cd build
         for app in *.app; do
             /usr/local/opt/qt/bin/macdeployqt ${app} -dmg
             mv "${app%.app}.dmg" "${app%.app}-${LSL_RELEASE}-MacOS64.dmg"
