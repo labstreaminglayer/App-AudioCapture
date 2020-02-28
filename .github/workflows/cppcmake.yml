@@ -148,15 +148,26 @@ jobs:
         pwd
         ls -all
         ls pkg-ubuntu-latest
+        ls pkg-macOS-latest
 
-    - name: Upload Release Asset
+    - name: Upload Release Asset (ubuntu)
       if: startsWith(github.ref, 'refs/tags/')
-      id: upload-release-asset 
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: pkg-ubuntu-latest
-        asset_name: pkg-ubuntu-latest
-        asset_content_type: application/zip
+        asset_path: pkg-ubuntu-latest/AudioCapture-0.1-Linux64-bionic.deb
+        asset_name: AudioCapture-0.1-Linux64-bionic.deb
+        asset_content_type: application/vnd.debian.binary-package
+        
+    - name: Upload Release Asset (macOS)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: pkg-macOS-latest/AudioCapture-1.13.0-MacOS64.dmg
+        asset_name: AudioCapture-1.13.0-MacOS64.dmg
+        asset_content_type: application/octet-stream
