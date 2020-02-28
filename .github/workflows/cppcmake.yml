@@ -86,9 +86,12 @@ jobs:
 
     - name: package (macOS)
       if: matrix.os == 'macOS-latest'
-      run:|
+      run: |
         cd build/install
-        for app in *.app; do /usr/local/opt/qt/bin/macdeployqt ${app} -dmg; mv "${app%.app}.dmg "${app%.app}-${LSL_RELEASE}-MacOS64.dmg"; done
+        for app in *.app; do
+            /usr/local/opt/qt/bin/macdeployqt ${app} -dmg
+            mv "${app%.app}.dmg "${app%.app}-${LSL_RELEASE}-MacOS64.dmg"
+        done
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@master
