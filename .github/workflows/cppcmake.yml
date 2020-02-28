@@ -9,6 +9,7 @@ on:
     - master
 
 env:
+  APP_NAME: 'AudioCapture'
   LSL_URL: 'https://github.com/sccn/liblsl/releases/download'
   LSL_RELEASE: '1.13.0'
   LSL_RELEASE_SUFFIX: ''
@@ -98,14 +99,14 @@ jobs:
       uses: actions/upload-artifact@master
       with:
         name: pkg-${{ matrix.os }}
-        path: build/*.deb
+        path: build/${AudioCapture}-0.1-Linux64-bionic.deb
     
     - name: Upload Artifacts (macOS)
       if: matrix.os == 'macOS-latest'
       uses: actions/upload-artifact@master
       with:
         name: pkg-${{ matrix.os }}
-        path: build/*.dmg
+        path: build/${AudioCapture}-${LSL_RELEASE}-MacOS64.dmg
     
   release:
     needs: build
