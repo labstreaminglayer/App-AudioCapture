@@ -90,7 +90,8 @@ jobs:
         cd build/install
         for app in *.app; do /usr/local/opt/qt/bin/macdeployqt ${app} -dmg; mv "${app%.app}.dmg "${app%.app}-${LSL_RELEASE}-MacOS64.dmg"; done
 
-    - uses: actions/upload-artifact@master
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@master
       with:
         name: pkg-${{ matrix.os }}
         path: build/install
