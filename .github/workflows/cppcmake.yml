@@ -2,8 +2,6 @@ name: C/C++ CI
 
 on:
   push:
-    branches:
-    - master
     tags:
     - v*.*
   pull_request:
@@ -32,35 +30,35 @@ jobs:
       run: cmake --version
     
     - name: download liblsl (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
       run: |
            echo ${{ github.ref }}
            curl -L ${LSL_URL}/${LSL_RELEASE}${LSL_RELEASE_SUFFIX}/liblsl-${LSL_RELEASE}-Linux64-bionic.deb -o liblsl.deb
            sudo dpkg -i liblsl.deb
            sudo apt install -y qtbase5-dev qtmultimedia5-dev
-      if: matrix.os == 'ubuntu-latest'
-
+      
     - name: download liblsl (Windows)
+      if: matrix.os == 'windows-latest'
       run: |
            Invoke-WebRequest -Uri $Env:LSL_URL/$Env:LSL_RELEASE$Env:LSL_RELEASE_SUFFIX/liblsl-$Env:LSL_RELEASE-Win64.zip -o liblsl.7z
            7z x liblsl.7z -oLSL
-      if: matrix.os == 'windows-latest'
-
+      
     - name: download liblsl (macOS)
+      if: matrix.os == 'macOS-latest'
       run: |
            curl -L ${LSL_URL}/${LSL_RELEASE}${LSL_RELEASE_SUFFIX}/liblsl-${LSL_RELEASE}-OSX64.tar.bz2 -o liblsl.tar.bz2
            mkdir LSL
            tar -xvf liblsl.tar.bz2 -C LSL
            brew install qt
            echo '::set-env name=CMAKE_PREFIX_PATH::/usr/local/opt/qt'
-      if: matrix.os == 'macOS-latest'
-    
+      
     - name: Install Qt
+      if: matrix.os == 'windows-latest'
       # uses: jurplel/install-qt-action@v2
       uses: ouuan/install-qt-action@v2.3.1 # workaround until the aqtinstall timeout is fixed
       with:
         version: 5.14.0
-      if: matrix.os == 'windows-latest'
-    
+      
     - name: Configure CMake
       shell: bash
       run: |
@@ -76,6 +74,10 @@ jobs:
         name: pkg-${{ matrix.os }}
         path: build/install
         
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       id: create_release
@@ -88,12 +90,20 @@ jobs:
         draft: false
         prerelease: false
         
+    - name: Download Artifacts
+      if: startsWith(github.ref, 'refs/tags/')
+      - uses: actions/download-artifact@v1
+        with:
+          name: |
+            pkg-ubuntu-latest
+            pkg-windows-latest
+            pkg-macOS-latest
+            
     - name: Test
+      if: startsWith(github.ref, 'refs/tags/')
       run: |
         pwd
         ls
-        ls build
-        ls build/install
 
     - name: Upload Release Asset
       if: startsWith(github.ref, 'refs/tags/')
@@ -103,6 +113,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: build/install/
-        asset_name: pkg-${{ matrix.os }}.zip
+        asset_path: pkg-ubuntu-latest.zip
+        asset_name: pkg-ubuntu-latest.zip
         asset_content_type: application/zip
