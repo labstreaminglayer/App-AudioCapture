@@ -106,7 +106,7 @@ jobs:
       uses: actions/upload-artifact@master
       with:
         name: pkg-${{ matrix.os }}
-        path: build/AudioCapture-${{LSL_RELEASE}}-MacOS64.dmg
+        path: build/AudioCapture-1.13.0-MacOS64.dmg
     
   release:
     needs: build
