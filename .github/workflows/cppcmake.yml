@@ -89,14 +89,21 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-    - name: Download Artifacts
+    - name: Download artifact - ubuntu
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/download-artifact@v1
       with:
-        name: |
-          pkg-ubuntu-latest
-          pkg-windows-latest
-          pkg-macOS-latest
+        name: pkg-ubuntu-latest
+    - name: Download artifact - windows
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/download-artifact@v1
+      with:
+        name: pkg-windows-latest
+    - name: Download artifact - macos
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/download-artifact@v1
+      with:
+        name: pkg-macOS-latest
     - name: Test
       if: startsWith(github.ref, 'refs/tags/')
       run: |
