@@ -78,7 +78,7 @@ jobs:
     - name: Package
       run: cmake --build build --config Release -j --target package
 
-    # TODO: Build artifact paths from variables
+    # TODO: upload-artifact@v2 (in-progress) will support file glob
     - name: Upload Artifacts (ubuntu)
       if: matrix.os == 'ubuntu-latest'
       uses: actions/upload-artifact@master
@@ -104,18 +104,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
+    
+    # TODO: download-artifact@v2 will support multiple download
     - name: Download Artifact (ubuntu)
       if: startsWith(github.ref, 'refs/tags/')
       uses: actions/download-artifact@v1
@@ -134,35 +124,19 @@ jobs:
       with:
         name: pkg-macOS-latest
 
-    - name: Upload Release Asset (ubuntu)
+    - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
+      id: create_release
+      uses: softprops/action-gh-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: pkg-ubuntu-latest/AudioCapture-0.1-Linux64-bionic.deb
-        asset_name: AudioCapture-0.1-Linux64-bionic.deb
-        asset_content_type: application/vnd.debian.binary-package
-        
-    - name: Upload Release Asset (macOS)
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: pkg-macOS-latest/AudioCapture-0.1-OSX64.tar.bz2
-        asset_name: AudioCapture-0.1-OSX64.tar.bz2
-        asset_content_type: application/octet-stream
-
-    - name: Upload Release Asset (windows)
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: pkg-windows-latest/AudioCapture-0.1-Win64.zip
-        asset_name: AudioCapture-0.1-Win64.zip
-        asset_content_type: application/x-7z-compressed
+        # tag_name: ${{ github.ref }}  # ${{ github.ref }} is default
+        name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+        # body_path: CHANGELOG.txt
+        files: |
+          pkg-ubuntu-latest/AudioCapture-0.1-Linux64-bionic.deb
+          pkg-macOS-latest/AudioCapture-0.1-OSX64.tar.bz2
+          pkg-windows-latest/AudioCapture-0.1-Win64.zip
