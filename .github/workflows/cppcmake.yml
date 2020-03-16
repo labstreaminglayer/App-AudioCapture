@@ -63,7 +63,10 @@ jobs:
       run: |
            cmake -S . -B build -DLSL_INSTALL_ROOT=$PWD/LSL/ -DCPACK_DEBIAN_PACKAGE_SHLIBDEPS=ON -DCPACK_DEBIAN_PACKAGE_DEPENDS=1
 
-    - name: Make & Package
+    - name: Make & Install
+      run: cmake --build build --config Release -j --target install
+      
+    - name: Package
       run: cmake --build build --config Release -j --target package
 
     - name: Upload Artifacts
