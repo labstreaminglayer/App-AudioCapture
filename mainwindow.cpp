@@ -58,6 +58,7 @@ MainWindow::MainWindow(QWidget *parent, const char *config_file)
 
 	QString cfgfilepath = find_config_file(config_file);
 	load_config(cfgfilepath);
+	checkAudioFormat();
 }
 
 QAudioDeviceInfo MainWindow::currentDeviceInfo() {
@@ -123,14 +124,20 @@ void MainWindow::updateComboBoxItems(QComboBox *box, QList<int> values) {
 void MainWindow::load_config(const QString &filename) {
 	QSettings settings(filename, QSettings::Format::IniFormat);
 	ui->input_name->setText(settings.value("AudioCapture/name", "MyAudioStream").toString());
-	// ui->input_device->setValue(settings.value("AudioCapture/device", 0).toInt());
+	ui->input_device->setCurrentIndex(settings.value("AudioCapture/device", 0).toInt());
+	ui->input_samplerate->setCurrentIndex(settings.value("AudioCapture/samplerate", 1).toInt());
+	ui->input_samplesize->setCurrentIndex(settings.value("AudioCapture/samplesize", 1).toInt());
+	ui->input_channels->setCurrentIndex(settings.value("AudioCapture/channels", 0).toInt());
 }
 
 void MainWindow::save_config(const QString &filename) {
 	QSettings settings(filename, QSettings::Format::IniFormat);
 	settings.beginGroup("AudioCapture");
 	settings.setValue("name", ui->input_name->text());
-	settings.setValue("device", ui->input_device->currentText());
+	settings.setValue("device", ui->input_device->currentIndex());
+	settings.setValue("samplerate", ui->input_samplerate->currentIndex());
+	settings.setValue("samplesize", ui->input_samplesize->currentIndex());
+	settings.setValue("channels", ui->input_channels->currentIndex());
 	settings.sync();
 }
 
