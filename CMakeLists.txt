@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 project(AudioCapture
-    LANGUAGES CXX
+    LANGUAGES CXX C
     VERSION 0.1)
 
 # Find an installed liblsl in paths set by the user (LSL_INSTALL_ROOT)
@@ -13,7 +13,6 @@ find_package(LSL REQUIRED
     PATH_SUFFIXES share/LSL)
 get_filename_component(LSL_PATH ${LSL_CONFIG} DIRECTORY)
 message(STATUS "Found LSL lib in ${LSL_PATH}")
-LSLAPP_Setup_Boilerplate()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
@@ -56,6 +55,7 @@ set(THIRD_PARTY_DLLS
    Qt5::Multimedia
    Qt5::Network
 )
+
 foreach(_lib ${THIRD_PARTY_DLLS})
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different  
