@@ -5,3 +5,7 @@ ui_*.h
 /CMakeSettings.json
 .vs/
 out/
+.DS_Store
+LSL/
+liblsl.tar.bz2
+
