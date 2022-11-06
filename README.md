@@ -23,8 +23,10 @@ Using this app is very simple:
 # Build
 
 The build instructions for this app are mostly the same as the [generic LSL App build instructions](https://labstreaminglayer.readthedocs.io/dev/app_build.html).
-Qt5 Multimedia module is required. On Ubuntu this does not come with qt5 by default. Install it with `sudo apt-get install qtmultimedia5-dev`.
+Qt Multimedia module is required. On Ubuntu this does not come with qt5 by default. Install it with `sudo apt-get install qtmultimedia5-dev`. On Mac, with homebrew, it is only included in qt6 >= 6.2, which isn't out yet, so qt5 is required.
+On Mac, it appears to be necessary to use the Xcode generator: `cmake -B build -S . -DCMAKE_INSTALL_PREFIX="build/install" -G Xcode`
 
+Note that code-signing has been disabled.
 
 # Further Notes
 
