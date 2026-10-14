@@ -28,7 +28,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # By default, liblsl is fetched automatically from GitHub.
 # To use a pre-installed liblsl, set LSL_INSTALL_ROOT.
 set(LSL_INSTALL_ROOT "" CACHE PATH "Path to installed liblsl (optional)")
-set(LSL_FETCH_REF "v1.17.5" CACHE STRING "liblsl version to fetch from GitHub")
+set(LSL_FETCH_REF "v1.18.0.b6" CACHE STRING "liblsl version to fetch from GitHub")
 
 if(LSL_INSTALL_ROOT)
     # Use pre-installed liblsl
