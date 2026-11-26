@@ -6,6 +6,10 @@ The AudioCapture application uses Qt's [QAudioSource](https://doc.qt.io/qt-6/qau
 
 Download the latest version [from the releases page](https://github.com/labstreaminglayer/App-AudioCapture/releases).
 
+On Ubuntu there are two packages per release: `AudioCaptureCLI-*.deb` (the headless CLI, no Qt) and
+`AudioCapture-*.deb` (the GUI, which needs the CLI package). For the CLI only:
+`sudo apt install ./AudioCaptureCLI-*.deb`; for both: `sudo apt install ./AudioCapture*.deb`.
+
 The Windows release requires vc_redist.x64.exe; if you don't already have it then you can install the download [from Microsoft](https://support.microsoft.com/en-gb/help/2977003/the-latest-supported-visual-c-downloads).
 
 Using this app is very simple:
