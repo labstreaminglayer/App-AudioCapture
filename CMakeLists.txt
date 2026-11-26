@@ -13,7 +13,7 @@ endif()
 
 # Version is derived from the nearest git tag (see cmake/ProjectVersion.cmake).
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProjectVersion.cmake)
-audiocapture_version_from_git(AUDIOCAPTURE_VERSION AUDIOCAPTURE_VERSION_FULL FALLBACK "1.17.2")
+audiocapture_version_from_git(AUDIOCAPTURE_VERSION AUDIOCAPTURE_VERSION_FULL FALLBACK "2.0.0")
 
 project(AudioCapture
     VERSION ${AUDIOCAPTURE_VERSION}
