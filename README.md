@@ -38,7 +38,9 @@ AudioCaptureCLI --ts-offset-us 520             # subtract the device's measured 
 The same offset can be set for the GUI with `timestamp_offset_us=` in the `[AudioCapture]` section of its config file.
 See [Measuring the timestamp offset](#measuring-the-timestamp-offset) for how to find the value.
 
-Capture APIs: on macOS, CoreAudio (timestamps from the HAL's input time stamps); on Linux, PipeWire (default when it has audio devices; timestamps from its graph clock) and ALSA
+Capture APIs: on Windows, WASAPI (timestamps from the engine's per-packet performance-counter positions; capture at
+the device's own rate, set in Sound settings, since Windows' resampler adds latency); on macOS, CoreAudio (timestamps
+from the HAL's input time stamps); on Linux, PipeWire (default when it has audio devices; timestamps from its graph clock) and ALSA
 (direct `hw:` access with kernel hardware timestamps; never chosen automatically because it takes the device
 exclusively). Elsewhere, and as the GUI's fallback, QtMultimedia (chunks stamped on arrival).
 
@@ -76,6 +78,8 @@ channels. There are two kinds of reference:
   * LSL's clock synchronization, applied by pyxdf when loading the file, maps the Pi's clock onto the audio
     computer's. Use a wired network.
   * Against PTP hardware timestamps, this came within 30 us of the true offset.
+  * LSL's clock offsets are noisier than the audio timestamps, so repeat the recording. The printed SD should be
+    on the order of 10 us, and two runs should agree to within a few tens of us.
 
 Wiring: a GPIO is a 3.3 V logic output, while a line input expects about 1 V.
 * Use a divider into the line input: 10 kOhm from the GPIO to the tip (left channel), 1 kOhm from the tip to ground,
@@ -87,7 +91,8 @@ Built-in microphones can only be calibrated acoustically, for example with an ea
 adds about 3 us per mm, and `measure_offset.py` is meant for electrical edges, not acoustic clicks.
 
 Examples (yours will differ): a Realtek ALC897 line input on Linux measured 520 us with ALSA and 1160 us with
-PipeWire. PipeWire does not see the driver's 32-frame FIFO delay.
+PipeWire (PipeWire does not see the driver's 32-frame FIFO delay); the same input on Windows measured 549 us
+with WASAPI at the device's 44.1 kHz and 1265 us at 48 kHz, through Windows' resampler.
 
 # Build from source
 

@@ -10,3 +10,4 @@ out/
 LSL/
 liblsl.tar.bz2
 .idea/
+__pycache__/

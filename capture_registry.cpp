@@ -7,6 +7,9 @@ extern const CaptureApi kPipeWireApi;
 #ifdef AC_HAVE_COREAUDIO
 extern const CaptureApi kCoreAudioApi;
 #endif
+#ifdef AC_HAVE_WASAPI
+extern const CaptureApi kWasapiApi;
+#endif
 #ifdef AC_HAVE_QT
 extern const CaptureApi kQtApi;
 #endif
@@ -21,6 +24,9 @@ const std::vector<CaptureApi> &captureApis() {
 #endif
 #ifdef AC_HAVE_COREAUDIO
 		kCoreAudioApi,
+#endif
+#ifdef AC_HAVE_WASAPI
+		kWasapiApi,
 #endif
 #ifdef AC_HAVE_QT
 		kQtApi,

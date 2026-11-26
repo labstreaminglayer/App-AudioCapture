@@ -88,7 +88,7 @@ LSL_configure_rpath()
 # =============================================================================
 # Application Target
 # =============================================================================
-# Capture APIs. Native ones (Linux: PipeWire, ALSA; macOS: CoreAudio) go into GUI and CLI; QtMultimedia goes into the GUI everywhere
+# Capture APIs. Native ones (Linux: PipeWire, ALSA; macOS: CoreAudio; Windows: WASAPI) go into GUI and CLI; QtMultimedia goes into the GUI everywhere
 # and into the CLI only when no native API exists. The default API is chosen at runtime (capture_registry.cpp).
 set(CAPTURE_COMMON capture.h capture_registry.cpp session.h session.cpp)
 set(NATIVE_SOURCES)
@@ -115,6 +115,11 @@ if(APPLE)
     list(APPEND NATIVE_SOURCES capture_coreaudio.cpp)
     list(APPEND NATIVE_LIBS "-framework CoreAudio" "-framework AudioToolbox" "-framework CoreFoundation")
     list(APPEND NATIVE_DEFS AC_HAVE_COREAUDIO)
+endif()
+if(WIN32)
+    list(APPEND NATIVE_SOURCES capture_wasapi.cpp)
+    list(APPEND NATIVE_LIBS ole32)
+    list(APPEND NATIVE_DEFS AC_HAVE_WASAPI)
 endif()
 message(STATUS "AudioCapture native capture APIs: ${NATIVE_SOURCES}")
 
