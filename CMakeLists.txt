@@ -11,8 +11,12 @@ if(POLICY CMP0177)
     cmake_policy(SET CMP0177 NEW)
 endif()
 
+# Version is derived from the nearest git tag (see cmake/ProjectVersion.cmake).
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProjectVersion.cmake)
+audiocapture_version_from_git(AUDIOCAPTURE_VERSION AUDIOCAPTURE_VERSION_FULL FALLBACK "1.17.2")
+
 project(AudioCapture
-    VERSION 0.2.0
+    VERSION ${AUDIOCAPTURE_VERSION}
     DESCRIPTION "Capture audio and stream it over LabStreamingLayer"
     HOMEPAGE_URL "https://github.com/labstreaminglayer/App-AudioCapture/"
     LANGUAGES CXX C
@@ -280,11 +284,11 @@ LSL_get_target_arch()
 LSL_get_os_name()
 
 set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VERSION "${AUDIOCAPTURE_VERSION_FULL}")
 set(CPACK_PACKAGE_VENDOR "Labstreaminglayer")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
 set(CPACK_PACKAGE_HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}")
-set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-${LSL_OS}_${LSL_ARCH}")
+set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}-${AUDIOCAPTURE_VERSION_FULL}-${LSL_OS}_${LSL_ARCH}")
 set(CPACK_STRIP_FILES ON)
 
 if(WIN32)
