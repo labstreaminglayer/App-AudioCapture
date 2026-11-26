@@ -235,13 +235,15 @@ else()
     set(INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
 endif()
 
+# Components: "cli" (CLI + liblsl, no Qt) and "gui". On Linux they become two .deb packages.
 install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION "${INSTALL_BINDIR}"
     RUNTIME DESTINATION "${INSTALL_BINDIR}"
+    COMPONENT gui
 )
 if(AUDIOCAPTURE_BUILD_CLI AND NOT APPLE)
     # ponytail: macOS CLI is build-only; packaging it needs its own Qt/liblsl deployment and signing.
-    install(TARGETS ${PROJECT_NAME}CLI RUNTIME DESTINATION "${INSTALL_BINDIR}")
+    install(TARGETS ${PROJECT_NAME}CLI RUNTIME DESTINATION "${INSTALL_BINDIR}" COMPONENT cli)
 endif()
 
 # =============================================================================
@@ -250,6 +252,7 @@ endif()
 LSL_install_liblsl(
     DESTINATION "${INSTALL_LIBDIR}"
     FRAMEWORK_DESTINATION "${INSTALL_BINDIR}/${PROJECT_NAME}.app/Contents/Frameworks"
+    COMPONENT cli
 )
 
 # =============================================================================
@@ -296,12 +299,25 @@ if(WIN32)
 elseif(APPLE)
     set(CPACK_GENERATOR TGZ)
 else()
-    set(CPACK_GENERATOR DEB TGZ)
+    # Two packages, so the CLI installs without Qt: audiocapture-cli (CLI + liblsl) and audiocapture (GUI).
+    set(CPACK_GENERATOR DEB)
+    set(CPACK_DEB_COMPONENT_INSTALL ON)
+    set(CPACK_COMPONENTS_ALL cli gui)
+    set(CPACK_COMPONENT_GUI_DEPENDS cli)
+    set(CPACK_DEBIAN_ENABLE_COMPONENT_DEPENDS ON)  # audiocapture depends on audiocapture-cli (= version)
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "LabStreamingLayer Developers")
     set(CPACK_DEBIAN_PACKAGE_SECTION "science")
-    set(CPACK_DEBIAN_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}.deb")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS OFF)
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6widgets6, libqt6multimedia6")
+    set(CPACK_DEBIAN_CLI_PACKAGE_NAME "audiocapture-cli")
+    set(CPACK_DEBIAN_CLI_FILE_NAME "${PROJECT_NAME}CLI-${AUDIOCAPTURE_VERSION_FULL}-${LSL_OS}_${LSL_ARCH}.deb")
+    # Ubuntu 24.04+ renamed these libraries (64-bit time_t transition); either name satisfies the dependency.
+    set(CPACK_DEBIAN_CLI_PACKAGE_DEPENDS "libasound2t64 | libasound2, libpipewire-0.3-0t64 | libpipewire-0.3-0")
+    # Earlier single-package releases shipped the CLI and liblsl in "audiocapture".
+    set(CPACK_DEBIAN_CLI_PACKAGE_REPLACES "audiocapture (<< ${AUDIOCAPTURE_VERSION_FULL})")
+    set(CPACK_DEBIAN_CLI_PACKAGE_BREAKS "audiocapture (<< ${AUDIOCAPTURE_VERSION_FULL})")
+    set(CPACK_DEBIAN_GUI_PACKAGE_NAME "audiocapture")
+    set(CPACK_DEBIAN_GUI_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}.deb")
+    set(CPACK_DEBIAN_GUI_PACKAGE_DEPENDS "libqt6widgets6, libqt6multimedia6")
 endif()
 
 include(CPack)
