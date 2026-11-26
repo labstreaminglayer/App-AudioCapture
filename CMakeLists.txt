@@ -88,6 +88,36 @@ LSL_configure_rpath()
 # =============================================================================
 # Application Target
 # =============================================================================
+# Capture APIs. Native ones (Linux: PipeWire, ALSA; macOS: CoreAudio) go into GUI and CLI; QtMultimedia goes into the GUI everywhere
+# and into the CLI only when no native API exists. The default API is chosen at runtime (capture_registry.cpp).
+set(CAPTURE_COMMON capture.h capture_registry.cpp session.h session.cpp)
+set(NATIVE_SOURCES)
+set(NATIVE_LIBS)
+set(NATIVE_DEFS)
+if(UNIX AND NOT APPLE)
+    find_package(PkgConfig)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(PIPEWIRE IMPORTED_TARGET libpipewire-0.3)
+    endif()
+    if(PIPEWIRE_FOUND)
+        list(APPEND NATIVE_SOURCES capture_pipewire.cpp)
+        list(APPEND NATIVE_LIBS PkgConfig::PIPEWIRE)
+        list(APPEND NATIVE_DEFS AC_HAVE_PIPEWIRE)
+    endif()
+    find_package(ALSA)
+    if(ALSA_FOUND)
+        list(APPEND NATIVE_SOURCES capture_alsa.cpp)
+        list(APPEND NATIVE_LIBS ALSA::ALSA)
+        list(APPEND NATIVE_DEFS AC_HAVE_ALSA)
+    endif()
+endif()
+if(APPLE)
+    list(APPEND NATIVE_SOURCES capture_coreaudio.cpp)
+    list(APPEND NATIVE_LIBS "-framework CoreAudio" "-framework AudioToolbox" "-framework CoreFoundation")
+    list(APPEND NATIVE_DEFS AC_HAVE_COREAUDIO)
+endif()
+message(STATUS "AudioCapture native capture APIs: ${NATIVE_SOURCES}")
+
 qt_add_executable(${PROJECT_NAME} MACOSX_BUNDLE)
 
 target_sources(${PROJECT_NAME} PRIVATE
@@ -95,16 +125,46 @@ target_sources(${PROJECT_NAME} PRIVATE
     mainwindow.cpp
     mainwindow.h
     mainwindow.ui
-    reader.h
-    reader.cpp
+    ${CAPTURE_COMMON}
+    ${NATIVE_SOURCES}
+    capture_qt.cpp
 )
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${NATIVE_DEFS} AC_HAVE_QT)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt::Widgets
     Qt::Multimedia
     Threads::Threads
     LSL::lsl
+    ${NATIVE_LIBS}
 )
+
+# Headless CLI: no Qt when a native capture API exists; otherwise QtMultimedia, which needs a Qt event loop.
+option(AUDIOCAPTURE_BUILD_CLI "Build the headless AudioCaptureCLI" ON)
+if(AUDIOCAPTURE_BUILD_CLI)
+    add_executable(${PROJECT_NAME}CLI cli_main.cpp ${CAPTURE_COMMON})
+    set_target_properties(${PROJECT_NAME}CLI PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+    target_link_libraries(${PROJECT_NAME}CLI PRIVATE Threads::Threads LSL::lsl)
+    if(NATIVE_SOURCES)
+        target_sources(${PROJECT_NAME}CLI PRIVATE ${NATIVE_SOURCES})
+        target_compile_definitions(${PROJECT_NAME}CLI PRIVATE ${NATIVE_DEFS})
+        target_link_libraries(${PROJECT_NAME}CLI PRIVATE ${NATIVE_LIBS})
+    else()
+        target_sources(${PROJECT_NAME}CLI PRIVATE capture_qt.cpp)
+        target_compile_definitions(${PROJECT_NAME}CLI PRIVATE AC_HAVE_QT AUDIOCAPTURE_CLI_QT)
+        target_link_libraries(${PROJECT_NAME}CLI PRIVATE Qt::Multimedia)
+    endif()
+endif()
+
+option(AUDIOCAPTURE_BUILD_TESTS "Build self-checks (run with ctest)" OFF)
+if(AUDIOCAPTURE_BUILD_TESTS)
+    enable_testing()
+    add_executable(watchdog_test tests/watchdog_test.cpp session.h session.cpp capture.h)
+    set_target_properties(watchdog_test PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+    target_include_directories(watchdog_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(watchdog_test PRIVATE Threads::Threads LSL::lsl)
+    add_test(NAME watchdog_test COMMAND watchdog_test)
+endif()
 
 # macOS bundle configuration
 if(APPLE)
@@ -170,6 +230,10 @@ install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION "${INSTALL_BINDIR}"
     RUNTIME DESTINATION "${INSTALL_BINDIR}"
 )
+if(AUDIOCAPTURE_BUILD_CLI AND NOT APPLE)
+    # ponytail: macOS CLI is build-only; packaging it needs its own Qt/liblsl deployment and signing.
+    install(TARGETS ${PROJECT_NAME}CLI RUNTIME DESTINATION "${INSTALL_BINDIR}")
+endif()
 
 # =============================================================================
 # Bundle liblsl with the application
