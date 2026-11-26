@@ -271,6 +271,11 @@ LSL_codesign(
 # =============================================================================
 # CPack Configuration
 # =============================================================================
+# LSL_get_target_arch() reports only the first architecture of a multi-arch macOS build; it keeps a preset LSL_ARCH.
+list(LENGTH CMAKE_OSX_ARCHITECTURES _osx_arch_count)
+if(APPLE AND _osx_arch_count GREATER 1)
+    set(LSL_ARCH "universal")
+endif()
 LSL_get_target_arch()
 LSL_get_os_name()
 
