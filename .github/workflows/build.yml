@@ -47,6 +47,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need tags for cmake/ProjectVersion.cmake
 
       # -----------------------------------------------------------------------
       # Install CMake 3.28+ (Ubuntu 22.04 ships with 3.22)
@@ -140,6 +142,10 @@ jobs:
           tar -xzf *.tar.gz
           # Move contents out of versioned subdirectory to packages/
           SUBDIR=$(ls -d AudioCapture-*/ | head -1)
+          SUBDIR=${SUBDIR%/}
+          # AudioCapture-<version>-<os>_<arch> -> <version>
+          PKG_VERSION=${SUBDIR%-*}
+          echo "PKG_VERSION=${PKG_VERSION#AudioCapture-}" >> $GITHUB_ENV
           mv "$SUBDIR"/* .
           rmdir "$SUBDIR"
           ls -la
@@ -213,7 +219,7 @@ jobs:
 
           rm -f *.tar.gz
 
-          VERSION=$(grep -A1 'project(AudioCapture' ../CMakeLists.txt | grep VERSION | sed 's/.*VERSION \([0-9.]*\).*/\1/')
+          VERSION=$PKG_VERSION
           echo "Detected version: $VERSION"
 
           tar -cvzf "AudioCapture-${VERSION}-macOS_universal-signed.tar.gz" \
