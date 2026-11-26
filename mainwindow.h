@@ -31,10 +31,10 @@ private:
 
 	// function for loading / saving the config file
 	QString find_config_file(const char *filename);
-	void load_config(const QString &filename) const;
+	void load_config(const QString &filename);
 	void save_config(const QString &filename) const;
-	std::unique_ptr<class LslPusher> reader;
-	std::unique_ptr<class QAudioSource> audiosrc;
+	std::unique_ptr<class CaptureSession> session;
+	double timestamp_offset_us = 0.0;  // config-file only, no widget
 	std::unique_ptr<Ui::MainWindow> ui; // window pointer
 	QList<QAudioDevice> devices;
 };

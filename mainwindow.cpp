@@ -1,9 +1,7 @@
 #include "mainwindow.h"
-#include "reader.h"
+#include "session.h"
 #include "ui_mainwindow.h"
 
-#include <QAudioSource>
-#include <QBuffer>
 #include <QCloseEvent>
 #include <QDateTime>
 #include <QDebug>
@@ -11,20 +9,10 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QStandardPaths>
-#include <fstream>
+#include <QStatusBar>
+#include <QTimer>
 #include <lsl_cpp.h>
 #include <string>
-#include <vector>
-
-lsl::channel_format_t sampleFormatToLSL(QAudioFormat::SampleFormat fmt) {
-	switch (fmt) {
-		case QAudioFormat::Float: return lsl::cf_float32;
-		case QAudioFormat::Int32: return lsl::cf_int32;
-		case QAudioFormat::Int16: return lsl::cf_int16;
-		case QAudioFormat::UInt8: return lsl::cf_int8;
-		default: return lsl::cf_float32;
-	}
-}
 
 // Helper to convert SampleFormat to string
 QString sampleFormatToString(QAudioFormat::SampleFormat fmt) {
@@ -37,13 +25,10 @@ QString sampleFormatToString(QAudioFormat::SampleFormat fmt) {
     }
 }
 
-// Helper to convert string to SampleFormat
 QAudioFormat::SampleFormat stringToSampleFormat(const QString &str) {
-    if (str == "UInt8") return QAudioFormat::UInt8;
-    if (str == "Int16") return QAudioFormat::Int16;
-    if (str == "Int32") return QAudioFormat::Int32;
-    if (str == "Float") return QAudioFormat::Float;
-    return QAudioFormat::Unknown;
+	for (auto f : {QAudioFormat::UInt8, QAudioFormat::Int16, QAudioFormat::Int32, QAudioFormat::Float})
+		if (sampleFormatToString(f) == str) return f;
+	return QAudioFormat::Unknown;
 }
 
 MainWindow::MainWindow(QWidget *parent, const char *config_file)
@@ -75,6 +60,9 @@ MainWindow::MainWindow(QWidget *parent, const char *config_file)
 	});
 
 	connect(ui->linkButton, &QPushButton::clicked, this, &MainWindow::toggleRecording);
+	auto *poller = new QTimer(this);  // drives the capture watchdog
+	connect(poller, &QTimer::timeout, this, [this] { if (session) session->poll(); });
+	poller->start(500);
 
 	// audio devices
 	for (const auto &dev : devices) ui->input_device->addItem(dev.description());
@@ -158,14 +146,15 @@ void MainWindow::checkAudioFormat(const bool showModal = true) {
 	setFmt(fmt);
 }
 
-void MainWindow::load_config(const QString &filename) const {
+void MainWindow::load_config(const QString &filename) {
 	const QSettings settings(filename, QSettings::Format::IniFormat);
 	ui->input_name->setText(settings.value("AudioCapture/name", "MyAudioStream").toString());
 	ui->input_device->setCurrentIndex(settings.value("AudioCapture/device", 0).toInt());
 	ui->input_samplerate->setValue(settings.value("AudioCapture/samplerate", 1).toInt());
 	const QString sampleSize = settings.value("AudioCapture/samplesize", "Int16").toString();
-	ui->input_sampleformat->setCurrentIndex(ui->input_sampleformat->findData(QVariant::fromValue(sampleSize)));
+	ui->input_sampleformat->setCurrentIndex(ui->input_sampleformat->findText(sampleSize));
 	ui->input_channels->setValue(settings.value("AudioCapture/channels", 0).toInt());
+	timestamp_offset_us = settings.value("AudioCapture/timestamp_offset_us", 0.0).toDouble();
 }
 
 void MainWindow::save_config(const QString &filename) const {
@@ -176,54 +165,55 @@ void MainWindow::save_config(const QString &filename) const {
 	settings.setValue("samplerate", ui->input_samplerate->value());
 	settings.setValue("samplesize", ui->input_sampleformat->currentText());
 	settings.setValue("channels", ui->input_channels->value());
+	settings.setValue("timestamp_offset_us", timestamp_offset_us);
 	settings.sync();
 }
 
 void MainWindow::closeEvent(QCloseEvent *ev) {
-	if (reader) {
+	if (session) {
 		QMessageBox::warning(this, "Recording still running", "Can't quit while recording");
 		ev->ignore();
 	}
 }
 
 void MainWindow::toggleRecording() {
-	if (!reader) {
+	if (!session) {
 		// read the configuration from the UI fields
 		auto const name = ui->input_name->text().toStdString();
-		auto fmt = selectedAudioFormat();
-		auto const channel_count = fmt.channelCount();
-		auto const samplerate = fmt.sampleRate();
-		auto const channel_format = sampleFormatToLSL(fmt.sampleFormat());
-		auto const stream_id = currentDevice().description().toStdString();
+		auto const qfmt = selectedAudioFormat();
+		auto const qdev = currentDevice();
+		AudioFormat fmt{qfmt.channelCount(), qfmt.sampleRate()};
+		if (!parseSampleFormat(sampleFormatToString(qfmt.sampleFormat()).toStdString(), fmt.format)) {
+			QMessageBox::warning(this, "Capture failed", "Choose Int16, Int32 or Float; LSL has no unsigned 8-bit format.");
+			return;
+		}
+		DeviceInfo dev{qdev.id().toStdString(), qdev.description().toStdString(), fmt};
+		// Capture through the preferred API (PipeWire on Linux) when it has this device, else QtMultimedia.
+		const CaptureApi *api = findCaptureApi("QtMultimedia");
+		if (const auto *def = defaultCaptureApi(); def && def != api)
+			for (const auto &d : def->list())
+				if (d.id == dev.id || d.description == dev.description) {
+					api = def;
+					dev.id = d.id;
+					break;
+				}
+		qInfo() << "Capturing via" << api->name;
 
-		// Create the LSL stream info
-		lsl::stream_info info(name, "Audio", channel_count, samplerate, channel_format, stream_id);
-		info.desc().append_child("provider").append_child_value("api", "QtMultimedia");
-		info.desc().append_child_value("device", ui->input_device->currentText().toStdString());
-
-		// Create and open the QIODevice that will receive the audio data
-		reader = std::make_unique<LslPusher>(lsl::stream_outlet(info));
-		reader->open(QIODevice::OpenModeFlag::WriteOnly);
-
-		// Create the AudioSource
-		audiosrc = std::make_unique<QAudioSource>(currentDevice(), fmt, this);
-		// auto const buffer_ms = ui->input_buffersize->value();
-		// audiosrc->setBufferSize(fmt.bytesForDuration(2 * buffer_ms * 1000));
-
-		// Start sinking audio data to the LSL IO device
-		audiosrc->start(&*reader);
-		qInfo() << audiosrc->state() << ' ' << audiosrc->error();
+		session = std::make_unique<CaptureSession>(audioStreamInfo(name, fmt, dev, api->name, timestamp_offset_us),
+			timestamp_offset_us * 1e-6, [api, dev, fmt] { return api->make(dev.id, fmt); },
+			[](const std::string &msg) { qWarning() << msg.c_str(); });
+		if (std::string err; !session->start(err)) {
+			QMessageBox::warning(this, "Capture failed", QString::fromStdString(err));
+			session = nullptr;
+			return;
+		}
 		ui->linkButton->setText("Unlink");
+		statusBar()->showMessage(QStringLiteral("Streaming via %1").arg(api->name));
 	} else {
-		qInfo() << "Read " << reader->pos() << " bytes, " <<
-				   reader->samples_written() << " samples, " <<
-				   (static_cast<double>(reader->samples_written())/audiosrc->format().sampleRate()) << 's';
-		audiosrc->stop();
-		qInfo() << audiosrc->state() << ' ' << audiosrc->error();
-		reader->close();
-		audiosrc = nullptr;
-		reader = nullptr;
+		qInfo() << "Pushed" << session->samples_written() << "samples";
+		session = nullptr;
 		ui->linkButton->setText("Link");
+		statusBar()->clearMessage();
 	}
 }
 
